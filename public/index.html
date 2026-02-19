@@ -1,39 +1,27 @@
-const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batak & King - Şerif</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <img id="logo" src="logo.png" alt="Logo" style="width: 120px; margin-top: 20px;">
 
-app.use(express.static('public'));
+    <div id="menu">
+        <h1>Oyun Seç Kanka</h1>
+        <button onclick="sec('Batak')">Batak</button>
+        <button onclick="sec('King')">King</button>
+    </div>
 
-// Kart Destesi Oluşturma Fonksiyonu
-function desteOlustur() {
-    const renkler = ['S', 'H', 'C', 'D']; // Spades, Hearts, Clubs, Diamonds
-    const degerler = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-    let deste = [];
-    for (let r of renkler) {
-        for (let d of degerler) {
-            deste.push({ renk: r, deger: d });
-        }
-    }
-    // Karıştırma (Shuffle) Algoritması
-    return deste.sort(() => Math.random() - 0.5);
-}
+    <div id="game-board" style="display:none;">
+        <h2 id="active-title"></h2>
+        <div id="table-center"></div>
+        <div id="hand"></div>
+        <button onclick="location.reload()" style="position:fixed; top:10px; right:10px;">Çık</button>
+    </div>
 
-io.on('connection', (socket) => {
-    console.log('Oyuncu masaya oturdu.');
-
-    socket.on('secim', (oyun) => {
-        const yeniDeste = desteOlustur();
-        // Şimdilik sadece bağlanan oyuncuya 13 kart gönderiyoruz (Test için)
-        const el = yeniDeste.slice(0, 13);
-        
-        io.emit('oyunBasladi', { oyun: oyun, kartlar: el });
-    });
-
-    socket.on('kartAt', (kart) => {
-        io.emit('kartAtildi', { id: socket.id, kart: kart });
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log('Sistem aktif!'));
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
