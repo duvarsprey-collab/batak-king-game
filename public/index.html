@@ -1,28 +1,61 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batak & King Master - Şerif</title>
+    <title>Batak & King Pro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="lobby">
-        <img src="logo.png" alt="DEU Makine" class="main-logo">
-        <h1>Oyun Modu Seç</h1>
-        <button onclick="startGame('bot')">Botlarla Oyna</button>
-        <button onclick="startGame('friends')">Arkadaşlarla Oyna</button>
+        <img src="assets/logo.png" style="width:150px; margin-bottom:20px;">
+        <h1>Şerif'in Oyun Kulübü</h1>
+        <input type="text" id="username" placeholder="Adın ne kanka?">
+        <br>
+        <button class="btn" onclick="joinGame()">Masaya Otur</button>
+        <div id="player-list" style="margin-top:20px; color:#aaa;"></div>
+        
+        <div id="game-modes" style="display:none; margin-top:20px;">
+            <h3>Oyun Başlat:</h3>
+            <button class="btn" onclick="startGame('batak')">Batak (İhaleli)</button>
+            <button class="btn" onclick="startGame('king')">King</button>
+        </div>
     </div>
 
-    <div id="game-area" style="display:none;">
-        <div class="table">
-            <div id="opponents">
-                <div class="player-slot top">Bot 2</div>
-                <div class="player-slot left">Bot 1</div>
-                <div class="player-slot right">Bot 3</div>
+    <div id="game-container">
+        <div id="score-board">Skorlar yükleniyor...</div>
+        <div id="status-msg">Oyun Bekleniyor...</div>
+        
+        <div id="table-area">
             </div>
-            <div id="deck-middle"></div>
-        </div>
-        <div id="player-hand"></div>
+
+        <div id="my-hand">
+            </div>
+    </div>
+
+    <div id="bidding-modal" class="modal">
+        <h3>İhaleye Giriyor musun?</h3>
+        <button class="btn" onclick="sendBid(0)">Pas</button>
+        <button class="btn" onclick="sendBid(5)">5</button>
+        <button class="btn" onclick="sendBid(6)">6</button>
+        <button class="btn" onclick="sendBid(7)">7</button>
+        <button class="btn" onclick="sendBid(8)">8+</button>
+    </div>
+
+    <div id="king-modal" class="modal">
+        <h3>Ne Oynayalım?</h3>
+        <button class="btn" onclick="selectContract('koz')">Koz Oyunu</button>
+        <button class="btn" onclick="selectContract('el_almaz')">El Almaz</button>
+        <button class="btn" onclick="selectContract('rifki')">Rıfkı (Kupa Papaz)</button>
+        <button class="btn" onclick="selectContract('kiz_almaz')">Kız Almaz</button>
+    </div>
+
+    <div id="trump-modal" class="modal">
+        <h3>Koz Seç</h3>
+        <button class="btn" onclick="selectTrump('S')">♠ Maça</button>
+        <button class="btn" onclick="selectTrump('H')">♥ Kupa</button>
+        <button class="btn" onclick="selectTrump('C')">♣ Sinek</button>
+        <button class="btn" onclick="selectTrump('D')">♦ Karo</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
