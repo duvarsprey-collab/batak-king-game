@@ -6,194 +6,181 @@ const path = require('path');
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- OYUN SABİTLERİ VE MANTIK ---
-const SUITS = ['S', 'H', 'C', 'D']; // Maça, Kupa, Sinek, Karo
+// --- OYUN AYARLARI ---
+const SUITS = ['S', 'H', 'C', 'D']; 
 const VALUES = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
 let gameState = {
-    players: [], // {id, name, hand, team}
+    players: [], 
     deck: [],
-    table: [], // {playerId, card}
+    table: [],
     turnIndex: 0,
-    gameMode: null, // 'batak', 'king'
-    trumpSuit: null, // Koz
-    bidWinner: null, // İhaleyi alan
-    currentBid: 0,
-    kingContract: null, // 'rifki', 'kiz', 'el' vb.
+    gameMode: null,
+    trumpSuit: null,
+    kingContract: null,
     scores: {},
-    phase: 'lobby' // lobby, bidding, selecting_contract, playing
+    phase: 'lobby'
 };
 
-// Deste Oluştur ve Karıştır
 function createDeck() {
     let deck = [];
     SUITS.forEach(s => VALUES.forEach(v => {
-        deck.push({ 
-            suit: s, 
-            value: v, 
-            rank: VALUES.indexOf(v),
-            id: s+v 
-        });
+        deck.push({ suit: s, value: v, rank: VALUES.indexOf(v), id: s+v });
     }));
     return deck.sort(() => Math.random() - 0.5);
 }
 
-// Kural Kontrolü: Oyuncu o kartı atabilir mi?
-function isValidMove(playerHand, card, table) {
-    if (table.length === 0) return true; // İlk kartı atan istediğini atar
-    
-    const leadSuit = table[0].card.suit;
-    const hasLeadSuit = playerHand.some(c => c.suit === leadSuit);
-    
-    // 1. Kural: Yerdeki renkten varsa onu atmak ZORUNDASIN
-    if (hasLeadSuit && card.suit !== leadSuit) return false;
-    
-    // 2. Kural: Yerdeki renk yoksa ve elinde koz varsa çakmak zorundasın (Batak için)
-    // Şimdilik basitleştirilmiş: Renk yoksa istediğini atabilir (Ama koz varsa koz atması önerilir)
-    return true;
+// BOT HAMLESİ: En mantıklı kartı seçer
+function getBotMove(player) {
+    // 1. Eğer yer boşsa: Rastgele (veya büyük) at
+    if (gameState.table.length === 0) {
+        return player.hand[Math.floor(Math.random() * player.hand.length)];
+    }
+
+    const leadSuit = gameState.table[0].card.suit;
+    const cardsOfSuit = player.hand.filter(c => c.suit === leadSuit);
+
+    // 2. Yerdeki renkten varsa: Mecburen onu at
+    if (cardsOfSuit.length > 0) {
+        // Basit Zeka: Rastgele birini seç (Geliştirilebilir: En büyüğü at)
+        return cardsOfSuit[Math.floor(Math.random() * cardsOfSuit.length)];
+    }
+
+    // 3. Renk yoksa: Koz var mı? (Batak ise)
+    if (gameState.trumpSuit) {
+        const trumps = player.hand.filter(c => c.suit === gameState.trumpSuit);
+        if (trumps.length > 0) return trumps[0];
+    }
+
+    // 4. Hiçbiri yoksa: En küçük kartı at (Salla gitsin)
+    return player.hand[0];
 }
 
-// Eli Kim Kazandı?
-function calculateTrickWinner() {
+// ORTAK KART ATMA FONKSİYONU (Hem Sen Hem Bot İçin)
+function handlePlayCard(playerId, card) {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Kartı elden çıkar
+    player.hand = player.hand.filter(c => c.id !== card.id);
+    
+    // Gerçek oyuncuysa elini güncelle
+    if (!player.isBot) {
+        io.to(playerId).emit('yourHand', player.hand);
+    }
+
+    // Masaya koy
+    gameState.table.push({ playerId: playerId, card: card });
+    io.emit('tableUpdate', gameState.table);
+
+    // Sırayı ilerlet
+    gameState.turnIndex = (gameState.turnIndex + 1) % 4;
+    const nextPlayer = gameState.players[gameState.turnIndex];
+    io.emit('turnChange', nextPlayer.id);
+
+    // El bitti mi?
+    if (gameState.table.length === 4) {
+        setTimeout(finishTrick, 1500);
+    } else {
+        // Sıradaki oyuncu Botsa, hamle yaptır
+        if (nextPlayer.isBot) {
+            setTimeout(() => {
+                const botCard = getBotMove(nextPlayer);
+                handlePlayCard(nextPlayer.id, botCard);
+            }, 1000); // 1 saniye düşünme payı
+        }
+    }
+}
+
+function finishTrick() {
+    // Kazananı belirle (Basit Mantık: En büyük atan)
     let winner = gameState.table[0];
     const leadSuit = winner.card.suit;
-    
+
     gameState.table.forEach(move => {
-        // Koz varsa kozu atan alır (Batak veya King Koz oyunuysa)
-        if (gameState.trumpSuit && move.card.suit === gameState.trumpSuit && winner.card.suit !== gameState.trumpSuit) {
+        if (move.card.suit === leadSuit && move.card.rank > winner.card.rank) {
             winner = move;
         }
-        // İkisi de kozsa büyük koz alır
-        else if (gameState.trumpSuit && move.card.suit === gameState.trumpSuit && winner.card.suit === gameState.trumpSuit) {
-            if (move.card.rank > winner.card.rank) winner = move;
-        }
-        // Koz yoksa, yerdeki renkten en büyüğü alır
-        else if (move.card.suit === leadSuit && move.card.rank > winner.card.rank) {
-            winner = move;
-        }
+        // Koz kontrolü buraya eklenebilir
     });
-    return winner;
+
+    // Puan ver
+    gameState.scores[winner.playerId] = (gameState.scores[winner.playerId] || 0) + 1;
+    io.emit('updateScores', gameState.scores);
+    
+    // Masayı temizle
+    gameState.table = [];
+    io.emit('tableUpdate', []);
+    
+    // Kazanan başlar
+    gameState.turnIndex = gameState.players.findIndex(p => p.id === winner.playerId);
+    const nextPlayer = gameState.players[gameState.turnIndex];
+    io.emit('turnChange', nextPlayer.id);
+
+    // Kazanan Botsa hamle yapsın
+    if (nextPlayer.isBot) {
+        setTimeout(() => {
+            const botCard = getBotMove(nextPlayer);
+            handlePlayCard(nextPlayer.id, botCard);
+        }, 1000);
+    }
 }
 
 io.on('connection', (socket) => {
-    console.log('Oyuncu geldi:', socket.id);
-
-    // Oyuna Katılma
+    // 1. Oyuna Katıl
     socket.on('joinGame', (name) => {
         if (gameState.players.length < 4) {
-            gameState.players.push({ id: socket.id, name: name || `Oyuncu ${gameState.players.length+1}`, hand: [], score: 0 });
+            gameState.players.push({ id: socket.id, name: name, hand: [], isBot: false });
             gameState.scores[socket.id] = 0;
             io.emit('updatePlayers', gameState.players);
             
-            if (gameState.players.length === 4) {
-                io.emit('gameReady', true);
-            }
+            // Eğer 4 kişi olduysa başlat butonu açılabilir
+            if (gameState.players.length === 4) io.emit('gameReady', true);
         }
     });
 
-    // Oyunu Başlat (Batak veya King)
+    // 2. Botlarla Doldur (YENİ ÖZELLİK)
+    socket.on('addBots', () => {
+        while (gameState.players.length < 4) {
+            const botId = 'bot_' + Math.random().toString(36).substr(2, 5);
+            gameState.players.push({ 
+                id: botId, 
+                name: 'Robot ' + (gameState.players.length), 
+                hand: [], 
+                isBot: true 
+            });
+            gameState.scores[botId] = 0;
+        }
+        io.emit('updatePlayers', gameState.players);
+        io.emit('gameReady', true); // Oyun hazır sinyali gönder
+    });
+
+    // 3. Oyunu Başlat
     socket.on('startGame', (mode) => {
         gameState.gameMode = mode;
         gameState.deck = createDeck();
-        
-        // Kartları Dağıt (13'er tane)
-        gameState.players.forEach((p, index) => {
-            p.hand = gameState.deck.slice(index*13, (index+1)*13).sort((a,b) => {
-                if(a.suit === b.suit) return b.rank - a.rank; // Kendi içinde sırala
-                return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit);
-            });
-            io.to(p.id).emit('yourHand', p.hand);
+
+        // Kartları dağıt
+        gameState.players.forEach((p, i) => {
+            p.hand = gameState.deck.slice(i*13, (i+1)*13);
+            // Kartları sırala (Renk ve Büyüklük)
+            p.hand.sort((a,b) => (a.suit === b.suit) ? b.rank - a.rank : SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit));
+            
+            if (!p.isBot) io.to(p.id).emit('yourHand', p.hand);
         });
 
+        // Oyunu başlat
         gameState.turnIndex = 0;
-        gameState.phase = mode === 'batak' ? 'bidding' : 'selecting_contract';
-        
-        io.emit('gameStarted', { mode: mode, turn: gameState.players[0].id });
-        io.emit('phaseChange', gameState.phase); // İhale veya Seçim ekranını aç
+        io.emit('gameStarted', { mode: mode });
+        io.emit('turnChange', gameState.players[0].id);
     });
 
-    // Batak: İhale Verme
-    socket.on('bid', (amount) => {
-        // Basit ihale: Herkes sırayla söyler, en yüksek alan kalır (Burayı basitleştirdim)
-        gameState.currentBid = amount;
-        gameState.bidWinner = socket.id;
-        gameState.phase = 'selecting_trump';
-        io.to(socket.id).emit('selectTrump', true); // Sadece kazanan koz seçsin
-        io.emit('systemMessage', `${gameState.players.find(p=>p.id===socket.id).name} ihaleyi ${amount} ile aldı!`);
-    });
-
-    // Koz Seçimi (Batak) veya King Sözleşmesi
-    socket.on('selectTrump', (suit) => {
-        gameState.trumpSuit = suit;
-        gameState.phase = 'playing';
-        io.emit('trumpSelected', suit);
-        io.emit('phaseChange', 'playing');
-    });
-
-    // King: Ceza/Koz Seçimi
-    socket.on('selectContract', (contract) => {
-        gameState.kingContract = contract;
-        if (contract === 'koz') {
-             // Koz seçimi için arayüzü tetikle
-             io.to(socket.id).emit('selectTrump', true);
-        } else {
-            gameState.phase = 'playing';
-            gameState.trumpSuit = null; // Ceza oyunlarında koz yoktur
-            io.emit('kingContractSelected', contract);
-            io.emit('phaseChange', 'playing');
-        }
-    });
-
-    // Kart Atma (Oyunun Kalbi)
+    // 4. Kart Atma İsteği (Senden Geliyor)
     socket.on('playCard', (card) => {
-        // Sıra sende mi?
-        if (socket.id !== gameState.players[gameState.turnIndex].id) return;
-        
-        const player = gameState.players.find(p => p.id === socket.id);
-        
-        // Kurala uygun mu?
-        if (!isValidMove(player.hand, card, gameState.table)) {
-            socket.emit('invalidMove', 'Yerdeki renkten atmalısın!');
-            return;
-        }
-
-        // Kartı elinden sil
-        player.hand = player.hand.filter(c => c.id !== card.id);
-        socket.emit('yourHand', player.hand); // Eli güncelle
-
-        // Masaya koy
-        gameState.table.push({ playerId: socket.id, card: card });
-        io.emit('tableUpdate', gameState.table);
-
-        // Sırayı değiştir
-        gameState.turnIndex = (gameState.turnIndex + 1) % 4;
-        io.emit('turnChange', gameState.players[gameState.turnIndex].id);
-
-        // El bitti mi? (4 kart atıldıysa)
-        if (gameState.table.length === 4) {
-            setTimeout(() => {
-                const winnerMove = calculateTrickWinner();
-                const winnerId = winnerMove.playerId;
-                
-                // King Puanlama (Basit Örnekler)
-                if (gameState.gameMode === 'king') {
-                    if (gameState.kingContract === 'el_almaz') gameState.scores[winnerId] -= 50;
-                    else if (gameState.kingContract === 'rifki' && gameState.table.some(m => m.card.suit === 'H' && m.card.value === 'K')) gameState.scores[winnerId] -= 320;
-                    else gameState.scores[winnerId] += 50; // Pozitif oyun
-                } else {
-                    // Batak Puanlama
-                    gameState.scores[winnerId] += 10; 
-                }
-
-                io.emit('updateScores', gameState.scores);
-                io.emit('trickFinished', winnerId);
-                
-                // Masayı temizle, kazanan başlar
-                gameState.table = [];
-                gameState.turnIndex = gameState.players.findIndex(p => p.id === winnerId);
-                io.emit('tableUpdate', []);
-                io.emit('turnChange', winnerId);
-            }, 1500); // 1.5 saniye bekle ki millet kartları görsün
+        const currentPlayer = gameState.players[gameState.turnIndex];
+        // Sıra sende mi ve sen Bot değilsen
+        if (currentPlayer.id === socket.id) {
+            handlePlayCard(socket.id, card);
         }
     });
 });
