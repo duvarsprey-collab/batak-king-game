@@ -1,50 +1,42 @@
-:root {
-  --green: #0d3b1e;
-  --gold: #f1c40f;
-  --white: #ecf0f1;
+#hand {
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    gap: -20px; /* Kartların iç içe geçmesi için */
 }
 
-body {
-  background: var(--green);
-  color: var(--white);
-  font-family: 'Segoe UI', sans-serif;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  overflow: hidden;
+.card {
+    width: 70px;
+    height: 100px;
+    background: white;
+    border-radius: 8px;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 5px;
+    border: 1px solid #000;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
 }
 
-#logo {
-  width: 100px;
-  margin-bottom: 20px;
-  filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+.card:hover {
+    transform: translateY(-20px);
+    z-index: 100;
 }
 
-#menu, #game-board {
-  background: rgba(0,0,0,0.3);
-  padding: 30px;
-  border-radius: 20px;
-  border: 2px solid var(--gold);
-  text-align: center;
-}
+.card.S, .card.C { color: black; }
+.card.H, .card.D { color: red; }
 
-button {
-  background: var(--gold);
-  color: #000;
-  border: none;
-  padding: 15px 30px;
-  margin: 10px;
-  border-radius: 10px;
-  font-weight: bold;
-  font-size: 18px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 15px var(--gold);
+#table-center {
+    width: 200px;
+    height: 150px;
+    border: 2px dashed rgba(255,255,255,0.2);
+    margin: 50px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
