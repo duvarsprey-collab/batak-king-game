@@ -2,18 +2,27 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batak & King</title>
+    <title>Batak & King - Şerif</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body style="background: #1a1a1a; color: white; text-align: center; font-family: sans-serif;">
-    <h1>Şerif'in Masası</h1>
-    <button onclick="sec('Batak')" style="padding: 20px; font-size: 20px;">Batak</button>
-    <button onclick="sec('King')" style="padding: 20px; font-size: 20px;">King</button>
+<body>
+    <img id="logo" src="https://via.placeholder.com/100?text=LOGO" alt="Logo">
+
+    <div id="menu">
+        <h1>Masayı Seç Kanka</h1>
+        <button onclick="sec('Batak')">Batak</button>
+        <button onclick="sec('King')">King</button>
+    </div>
+
+    <div id="game-board" style="display:none;">
+        <h2 id="active-title"></h2>
+        <div id="playing-area">
+            <p>Kartlar Dağıtılıyor...</p>
+            </div>
+        <button onclick="location.reload()">Menüye Dön</button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        function sec(oyun) { socket.emit('secim', oyun); }
-        socket.on('oyunBasladi', (oyun) => { alert(oyun + " Başlıyor kanka!"); });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
