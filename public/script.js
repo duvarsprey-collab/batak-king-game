@@ -1,41 +1,40 @@
 const socket = io();
-const menu = document.getElementById('menu');
-const board = document.getElementById('game-board');
-const handContainer = document.getElementById('hand');
-const tableCenter = document.getElementById('table-center');
+let myCards = [];
+let currentMode = '';
 
-function sec(oyun) {
-    socket.emit('secim', oyun);
+function startGame(mode) {
+    currentMode = mode;
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('game-area').style.display = 'block';
+    socket.emit('joinGame', mode);
 }
 
-socket.on('oyunBasladi', (data) => {
-    menu.style.display = 'none';
-    board.style.display = 'block';
-    document.getElementById('active-title').innerText = data.oyun;
-    
-    // Kartları eline diz
-    handContainer.innerHTML = '';
-    data.kartlar.forEach(kart => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = `card ${kart.renk}`;
-        cardDiv.innerHTML = `<span>${kart.deger}</span><span>${getSimge(kart.renk)}</span>`;
-        cardDiv.onclick = () => kartiAt(kart, cardDiv);
-        handContainer.appendChild(cardDiv);
+socket.on('initGame', (data) => {
+    myCards = data.cards;
+    const hand = document.getElementById('player-hand');
+    hand.innerHTML = '';
+    myCards.forEach(k => {
+        const div = document.createElement('div');
+        div.className = `card ${k.suit}`;
+        div.innerHTML = `<div>${k.value}</div><div style="font-size:24px">${getIcon(k.suit)}</div>`;
+        div.onclick = () => playCard(k, div);
+        hand.appendChild(div);
     });
 });
 
-function getSimge(renk) {
-    const simgeler = { 'S': '♠', 'H': '♥', 'C': '♣', 'D': '♦' };
-    return simgeler[renk];
+function getIcon(s) { return {S:'♠', H:'♥', C:'♣', D:'♦'}[s]; }
+
+function playCard(card, el) {
+    // [Çıkarım] Batak kuralı: Eğer yerdeki karttan büyüğü varsa onu atmak zorundasın
+    socket.emit('playCard', { card, mode: currentMode });
+    el.remove();
 }
 
-function kartiAt(kart, el) {
-    socket.emit('kartAt', kart);
-    el.remove(); // Elinden çıkar
-}
-
-socket.on('kartAtildi', (data) => {
-    tableCenter.innerHTML = `<div class="card ${data.kart.renk}">
-        <span>${data.kart.deger}</span><span>${getSimge(data.kart.renk)}</span>
-    </div>`;
+socket.on('cardPlayed', (data) => {
+    const middle = document.getElementById('deck-middle');
+    const div = document.createElement('div');
+    div.className = `card ${data.card.suit}`;
+    div.innerHTML = `<div>${data.card.value}</div><div>${getIcon(data.card.suit)}</div>`;
+    middle.innerHTML = ''; // Önceki kartı temizle
+    middle.appendChild(div);
 });

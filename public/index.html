@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batak & King - Şerif</title>
+    <title>Batak & King Master - Şerif</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <img id="logo" src="logo.png" alt="Logo" style="width: 120px; margin-top: 20px;">
-
-    <div id="menu">
-        <h1>Oyun Seç Kanka</h1>
-        <button onclick="sec('Batak')">Batak</button>
-        <button onclick="sec('King')">King</button>
+    <div id="lobby">
+        <img src="logo.png" alt="DEU Makine" class="main-logo">
+        <h1>Oyun Modu Seç</h1>
+        <button onclick="startGame('bot')">Botlarla Oyna</button>
+        <button onclick="startGame('friends')">Arkadaşlarla Oyna</button>
     </div>
 
-    <div id="game-board" style="display:none;">
-        <h2 id="active-title"></h2>
-        <div id="table-center"></div>
-        <div id="hand"></div>
-        <button onclick="location.reload()" style="position:fixed; top:10px; right:10px;">Çık</button>
+    <div id="game-area" style="display:none;">
+        <div class="table">
+            <div id="opponents">
+                <div class="player-slot top">Bot 2</div>
+                <div class="player-slot left">Bot 1</div>
+                <div class="player-slot right">Bot 3</div>
+            </div>
+            <div id="deck-middle"></div>
+        </div>
+        <div id="player-hand"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
