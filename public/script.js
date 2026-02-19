@@ -2,85 +2,79 @@ const socket = io();
 let myHand = [];
 
 function joinGame() {
-    const name = document.getElementById('username').value;
-    if(!name) return alert("Adını yaz kanka!");
+    const name = document.getElementById('username').value || 'Misafir';
     socket.emit('joinGame', name);
-    // Masaya oturduktan sonra Bot butonunu göster
-    document.getElementById('bot-controls').style.display = 'block';
+    document.getElementById('bot-btn').style.display = 'inline-block';
 }
+function addBots() { socket.emit('addBots'); }
+function startGame(mode) { socket.emit('startGame', mode); }
 
-function addBots() {
-    socket.emit('addBots');
-    document.getElementById('bot-controls').style.display = 'none'; // Butonu gizle
-}
-
-function startGame(mode) {
-    socket.emit('startGame', mode);
-}
-
-socket.on('updatePlayers', (players) => {
-    let html = '<h3>Masadakiler:</h3>';
-    players.forEach(p => html += `<div>👤 ${p.name}</div>`);
-    document.getElementById('player-list').innerHTML = html;
+// Oyuncu Listesi
+socket.on('updatePlayers', p => {
+    document.getElementById('player-list').innerHTML = p.map(x => `👤 ${x.name}`).join('<br>');
 });
-
 socket.on('gameReady', () => {
-    document.getElementById('game-modes').style.display = 'block';
-    document.getElementById('bot-controls').style.display = 'none';
+    document.getElementById('mode-select').style.display = 'block';
+    document.getElementById('bot-btn').style.display = 'none';
 });
 
+// Oyun Başlayınca
 socket.on('gameStarted', () => {
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
 });
 
-socket.on('yourHand', (hand) => {
-    myHand = hand;
-    renderHand();
+// SEÇİM EKRANI AÇMA (CRITICAL UPDATE)
+socket.on('askSelection', (mode) => {
+    document.getElementById('modal-overlay').style.display = 'flex';
+    if (mode === 'batak') {
+        document.getElementById('trump-modal').style.display = 'block';
+    } else {
+        document.getElementById('king-modal').style.display = 'block';
+    }
 });
 
-function renderHand() {
+function makeSelection(type, value) {
+    socket.emit('selectionMade', { type, value });
+    document.getElementById('modal-overlay').style.display = 'none';
+    document.querySelectorAll('.modal-content').forEach(el => el.style.display = 'none');
+}
+
+// BİLGİ GÜNCELLEME (SOL ÜST)
+socket.on('updateInfo', (data) => {
+    document.getElementById('game-status').innerText = data.text;
+    if(data.icon) {
+        const icons = {'S':'♠️', 'H':'♥️', 'C':'♣️', 'D':'♦️'};
+        document.getElementById('trump-indicator').innerText = icons[data.icon] || '';
+    } else {
+        document.getElementById('trump-indicator').innerText = '';
+    }
+});
+
+// Kartlar ve Oyun
+socket.on('yourHand', (hand) => {
     const div = document.getElementById('my-hand');
     div.innerHTML = '';
-    myHand.forEach(card => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = `card ${card.suit}`;
-        cardDiv.innerHTML = `${card.value} <br> <span style="font-size:24px">${getIcon(card.suit)}</span>`;
-        cardDiv.onclick = () => socket.emit('playCard', card);
-        div.appendChild(cardDiv);
+    hand.forEach(c => {
+        const el = document.createElement('div');
+        el.className = `card ${c.suit}`;
+        el.innerHTML = `<b>${c.value}</b><div style="font-size:30px; text-align:center;">${getIcon(c.suit)}</div>`;
+        el.onclick = () => socket.emit('playCard', c);
+        div.appendChild(el);
     });
-}
+});
 
 socket.on('tableUpdate', (table) => {
     const div = document.getElementById('table-area');
     div.innerHTML = '';
-    table.forEach((move, i) => {
-        const c = document.createElement('div');
-        c.className = 'played-card';
-        c.style.left = (i * 30) + 'px'; // Kartları yan yana diz
-        c.innerHTML = `${move.card.value} ${getIcon(move.card.suit)}`;
-        if (move.card.suit === 'H' || move.card.suit === 'D') c.style.color = 'red';
-        div.appendChild(c);
+    table.forEach((m, i) => {
+        const el = document.createElement('div');
+        el.className = 'played-card';
+        el.style.left = `calc(50% + ${(i-1.5)*60}px)`; // Ortala
+        el.innerHTML = `${m.card.value} ${getIcon(m.card.suit)}`;
+        if('HD'.includes(m.card.suit)) el.style.color = 'red';
+        div.appendChild(el);
     });
-});
-
-socket.on('turnChange', (id) => {
-    const status = document.getElementById('status-msg');
-    if (id === socket.id) {
-        status.innerText = "SIRA SENDE! Kart At.";
-        status.style.color = "#f1c40f"; // Altın sarısı
-    } else {
-        status.innerText = "Rakip düşünüyor...";
-        status.style.color = "white";
-    }
-});
-
-socket.on('updateScores', (scores) => {
-    let html = '';
-    for (let [id, sc] of Object.entries(scores)) {
-        html += `<span style="margin:10px;">Puan: ${sc}</span>`;
-    }
-    document.getElementById('score-board').innerHTML = html;
 });
 
 function getIcon(s) { return {'S':'♠', 'H':'♥', 'C':'♣', 'D':'♦'}[s]; }

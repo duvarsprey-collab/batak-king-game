@@ -3,38 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batak & King - Şerif</title>
+    <title>Batak King Pro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="lobby">
-        <img src="logo.png" style="width:150px; margin-bottom:20px;" onerror="this.src='https://via.placeholder.com/150?text=LOGO'">
-        <h1>Şerif'in Masası</h1>
-        
-        <input type="text" id="username" placeholder="Adını yaz kanka...">
+        <img src="logo.png" style="width:120px;" onerror="this.src='https://via.placeholder.com/120?text=LOGO'">
+        <h1>Şerif'in Masası v7</h1>
+        <input type="text" id="username" placeholder="Adını Yaz">
         <br>
-        <button class="btn" onclick="joinGame()">Masaya Otur</button>
-        
-        <div id="bot-controls" style="display:none; margin-top:15px;">
-            <p>Diğerlerini beklemek istemiyor musun?</p>
-            <button class="btn" style="background:#e67e22; color:white;" onclick="addBots()">🤖 Botlarla Oyna</button>
-        </div>
-
-        <div id="player-list" style="margin-top:20px; color:#aaa;"></div>
-        
-        <div id="game-modes" style="display:none; margin-top:20px;">
-            <h3>Herkes Hazır! Başlat:</h3>
-            <button class="btn" onclick="startGame('batak')">Batak</button>
-            <button class="btn" onclick="startGame('king')">King</button>
+        <button class="btn" onclick="joinGame()">Giriş</button>
+        <button id="bot-btn" class="btn" style="display:none; background:#e67e22;" onclick="addBots()">Bot Ekle</button>
+        <div id="player-list" style="margin:20px;"></div>
+        <div id="mode-select" style="display:none;">
+            <button class="btn" onclick="startGame('batak')">♠️ BATAK</button>
+            <button class="btn" onclick="startGame('king')">👑 KING</button>
         </div>
     </div>
 
     <div id="game-container">
+        <div id="game-info-bar">
+            <span id="game-status">Bekleniyor...</span>
+            <span id="trump-indicator" style="font-size:30px; margin-left:10px;"></span>
+        </div>
+
         <div id="score-board"></div>
-        <div id="status-msg">Oyun Başlıyor...</div>
-        
         <div id="table-area"></div>
         <div id="my-hand"></div>
+    </div>
+
+    <div id="modal-overlay">
+        <div id="trump-modal" class="modal-content">
+            <h2>KOZ NEDİR?</h2>
+            <div class="suit-select">
+                <button onclick="makeSelection('trump', 'S')">♠️ MAÇA</button>
+                <button onclick="makeSelection('trump', 'H')">♥️ KUPA</button>
+                <button onclick="makeSelection('trump', 'C')">♣️ SİNEK</button>
+                <button onclick="makeSelection('trump', 'D')">♦️ KARO</button>
+            </div>
+        </div>
+
+        <div id="king-modal" class="modal-content">
+            <h2>NE OYNUYORUZ?</h2>
+            <button class="btn" onclick="makeSelection('contract', 'koz')">KOZ OYUNU</button>
+            <button class="btn" onclick="makeSelection('contract', 'rifki')">RIFKI</button>
+            <button class="btn" onclick="makeSelection('contract', 'kiz')">KIZ ALMAZ</button>
+            <button class="btn" onclick="makeSelection('contract', 'el')">EL ALMAZ</button>
+        </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
